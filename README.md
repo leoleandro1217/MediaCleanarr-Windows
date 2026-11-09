@@ -1,60 +1,50 @@
 # MediaCleanarr Windows
 
-**Your media library, your rules.**
-
-A native Windows desktop application to explore local and network media libraries.
-
-**Alpha 0.1 — read-only prototype.** This is an early test build, not a finished media renamer.
+**Your media library, your rules.** Native Windows desktop application written in C# / .NET 10 (WinForms).
 
 ## Download / Télécharger
 
-Download the Windows executable from [Releases](https://github.com/leoleandro1217/MediaCleanarr-Windows/releases). Open `MediaCleanarr-Windows.exe` on Windows 10/11. No Python installation required. The alpha build is unsigned, so Windows SmartScreen may display a warning; only proceed if you trust the release and repository.
+**[Windows x64 releases](https://github.com/leoleandro1217/MediaCleanarr-Windows/releases)**
 
-Télécharge l'exécutable depuis les [Releases](https://github.com/leoleandro1217/MediaCleanarr-Windows/releases). Lance `MediaCleanarr-Windows.exe` sous Windows 10/11. Python n'est pas nécessaire. L'exécutable n'est pas signé, donc Windows peut afficher un avertissement.
+Download **v0.2.0-alpha.1** (`MediaCleanarr-Windows.exe`) after its GitHub Actions build succeeds. This version is **self-contained**: no Python, Qt, .NET SDK or .NET runtime installation needed. Windows 10/11 x64 only.
 
-## Features / Fonctionnalités
+Télécharge la version **v0.2.0-alpha.1** après la compilation GitHub Actions. L'exécutable est **autonome**, sans installation de Python, Qt ou .NET. Windows 10/11 x64.
 
-- Select a folder with the native Windows folder picker / Choix du dossier dans l'explorateur
-- Scan supported video files recursively / Scan récursif des vidéos
-- Heuristically detect movie and TV series titles, years, SxxExx numbers / Détection approximative du titre, de l'année et des épisodes
-- Search/filter inventory / Recherche et filtrage
-- Export UTF-8 CSV / Export CSV
-- Read-only: does **not** rename, move or delete files / Lecture seule : **aucune modification** des fichiers
+**Note:** Alpha binary is not code-signed. Windows SmartScreen can warn about unknown publishers. Confirm the source and publisher before running. Do not turn off Windows security settings.
 
-Supported extensions: MKV, MP4, AVI, MOV, WMV, M4V, TS, MPG, MPEG, WEBM.
+## Alpha features / Fonctionnalités
 
-## Roadmap / À venir
+- Native Windows folder picker (including accessible network paths) / Sélection d'un dossier local ou réseau
+- Recursive local video inventory / Recherche récursive des vidéos
+- Approximate movie/TV parsing (filename, year, season and episode) / Reconnaissance approximative des films et séries
+- Search and CSV export / Recherche et export CSV
+- Cancel ongoing scan / Arrêter le scan
+- **Read-only**: never renames, moves or deletes a file / **Lecture seule** : aucun fichier modifié
 
-- Metadata integrations: OMDb and TheTVDB (API keys required)
-- Original/international title choice
-- Preview-and-confirm renaming, safe dry runs
-- Optional C411 comparison
-- Better recognition for ambiguous filenames and series
+Extensions: `mkv`, `mp4`, `avi`, `mov`, `wmv`, `m4v`, `ts`, `mpg`, `mpeg`, `webm`.
 
-These features are **not yet implemented**.
+**Not implemented yet:** OMDb / TheTVDB, C411 comparison, choosing international titles, automatic renaming, movie organization.
 
-## Build from source
+## Development / Développement
 
-Requires Python 3.12+:
+Requirements for developers: .NET 10 SDK and Windows.
 
 ```powershell
-python -m pip install -r requirements.txt
-python main.py
+dotnet run --project src/MediaCleanarr.Windows/MediaCleanarr.Windows.csproj
 ```
 
-Package on Windows:
+Build an independent portable exe:
 
 ```powershell
-python -m pip install pyinstaller==6.16.0
-pyinstaller --noconfirm --clean --onefile --windowed --name MediaCleanarr-Windows main.py
+dotnet publish src/MediaCleanarr.Windows/MediaCleanarr.Windows.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:DebugType=None -o publish
 ```
 
-The CI workflow builds on a Windows GitHub Actions runner. Every push to `main` uploads an artifact and refreshes the `v0.1.0-alpha.1` prerelease executable. Tags named `v*` also create releases.
+GitHub Actions builds on a Windows runner at each push to `main` and publishes the pre-release `v0.2.0-alpha.1`.
 
-## Security & privacy
+## Privacy
 
-The scanner only reads directory entries and file sizes; it never uploads your file list or contacts any media API in this alpha version. Do not scan directories you cannot access. A network path may be used if Windows has access to it.
+The scanner reads filenames and file sizes on your computer. It doesn't contact media databases or upload your inventory.
 
-## License
+## Project status
 
-Copyright © contributors. License to be chosen.
+Early alpha for hands-on Windows testing. Title matching is heuristic and may be imperfect. License not yet selected.
