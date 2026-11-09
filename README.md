@@ -6,13 +6,15 @@
 
 **[Windows x64 releases](https://github.com/leoleandro1217/MediaCleanarr-Windows/releases)**
 
-Download **v0.2.0-alpha.7** (`MediaCleanarr-Windows.exe`) after its GitHub Actions build succeeds. This version is **self-contained**: no Python, Qt, .NET SDK or .NET runtime installation needed. Windows 10/11 x64 only.
+Download **v0.2.0-alpha.8** (`MediaCleanarr-Windows.exe`) after its GitHub Actions build succeeds. This version is **self-contained**: no Python, Qt, .NET SDK or .NET runtime installation needed. Windows 10/11 x64 only.
 
-Télécharge la version **v0.2.0-alpha.7** après la compilation GitHub Actions. L'exécutable est **autonome**, sans installation de Python, Qt ou .NET. Windows 10/11 x64.
+Télécharge la version **v0.2.0-alpha.8** après la compilation GitHub Actions. L'exécutable est **autonome**, sans installation de Python, Qt ou .NET. Windows 10/11 x64.
 
 **Note:** Alpha binary is not code-signed. Windows SmartScreen can warn about unknown publishers. Confirm the source and publisher before running. Do not turn off Windows security settings.
 
 ## Alpha features / Fonctionnalités
+
+Alpha 8 fixes clipped metadata controls and the too-narrow filter input on Windows high-DPI displays. Metadata settings now occupy two rows.
 
 - Native Windows folder picker (including accessible network paths) / Sélection d'un dossier local ou réseau
 - Recursive local video inventory / Recherche récursive des vidéos
@@ -47,7 +49,7 @@ Build an independent portable exe:
 dotnet publish src/MediaCleanarr.Windows/MediaCleanarr.Windows.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:DebugType=None -o publish
 ```
 
-GitHub Actions builds on a Windows runner at each push to `main` and publishes the pre-release `v0.2.0-alpha.7`.
+GitHub Actions builds on a Windows runner at each push to `main` and publishes the pre-release `v0.2.0-alpha.8`.
 
 ## Privacy
 
