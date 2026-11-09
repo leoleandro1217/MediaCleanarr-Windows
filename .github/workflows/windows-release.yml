@@ -38,15 +38,15 @@ jobs:
           name: MediaCleanarr-Windows-win-x64
           path: publish/MediaCleanarr-Windows.exe
           if-no-files-found: error
-      - name: Publish Alpha 7 release
+      - name: Publish Alpha 8 release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.2.0-alpha.7
+          tag_name: v0.2.0-alpha.8
           target_commitish: ${{ github.sha }}
-          name: MediaCleanarr Windows v0.2.0 Alpha 7 (.NET)
+          name: MediaCleanarr Windows v0.2.0 Alpha 8 (.NET)
           body: |
             Windows x64 portable, self-contained .NET 10 build.
-            TMDb primary with original/French/English titles and year, optional OMDb and TheTVDB, local SQLite metadata cache, CSV export and custom icon.
+            Fixed UI layout at Windows display scaling; TMDb/OMDb/TheTVDB, year, SQLite cache and CSV export.
             Read-only alpha: does not rename, move or delete files.
           prerelease: true
           make_latest: false
