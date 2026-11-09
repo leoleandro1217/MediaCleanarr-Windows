@@ -6,9 +6,9 @@
 
 **[Windows x64 releases](https://github.com/leoleandro1217/MediaCleanarr-Windows/releases)**
 
-Download **v0.2.0-alpha.4** (`MediaCleanarr-Windows.exe`) after its GitHub Actions build succeeds. This version is **self-contained**: no Python, Qt, .NET SDK or .NET runtime installation needed. Windows 10/11 x64 only.
+Download **v0.2.0-alpha.5** (`MediaCleanarr-Windows.exe`) after its GitHub Actions build succeeds. This version is **self-contained**: no Python, Qt, .NET SDK or .NET runtime installation needed. Windows 10/11 x64 only.
 
-Télécharge la version **v0.2.0-alpha.4** après la compilation GitHub Actions. L'exécutable est **autonome**, sans installation de Python, Qt ou .NET. Windows 10/11 x64.
+Télécharge la version **v0.2.0-alpha.5** après la compilation GitHub Actions. L'exécutable est **autonome**, sans installation de Python, Qt ou .NET. Windows 10/11 x64.
 
 **Note:** Alpha binary is not code-signed. Windows SmartScreen can warn about unknown publishers. Confirm the source and publisher before running. Do not turn off Windows security settings.
 
@@ -23,7 +23,7 @@ Télécharge la version **v0.2.0-alpha.4** après la compilation GitHub Actions.
 
 Extensions: `mkv`, `mp4`, `avi`, `mov`, `wmv`, `m4v`, `ts`, `mpg`, `mpeg`, `webm`.
 
-**Not implemented yet:** OMDb / TheTVDB, C411 comparison, choosing international titles, automatic renaming, movie organization.
+**Optional metadata checks:** Select OMDb or TheTVDB, enter your own API key (plus a subscriber PIN if required for TheTVDB), scan files, then click **Check metadata**. The displayed title can include the movie or series year. Results are marked Matched / Review / Not found; inspect uncertain matches. Metadata requests send the detected title to the selected provider. Keys are held only in memory and are not stored in the app or exported to CSV.\n\n**Not implemented yet:** C411 comparison, choosing a specific regional title, automatic renaming, movie organization. OMDb does not guarantee the original-language title; its returned title is only the service's preferred result.
 
 ## Development / Développement
 
@@ -39,7 +39,7 @@ Build an independent portable exe:
 dotnet publish src/MediaCleanarr.Windows/MediaCleanarr.Windows.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:DebugType=None -o publish
 ```
 
-GitHub Actions builds on a Windows runner at each push to `main` and publishes the pre-release `v0.2.0-alpha.4`.
+GitHub Actions builds on a Windows runner at each push to `main` and publishes the pre-release `v0.2.0-alpha.5`.
 
 ## Privacy
 
