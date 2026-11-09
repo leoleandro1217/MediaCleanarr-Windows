@@ -117,7 +117,8 @@ internal sealed class MainForm : Form
         // Reuse the embedded executable icon for the window and taskbar.
         Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? SystemIcons.Application;
         StartPosition = FormStartPosition.CenterScreen;
-        MinimumSize = new Size(850, 560);
+        MinimumSize = new Size(900, 620);
+        AutoScaleMode = AutoScaleMode.Dpi;
         Size = new Size(1180, 740);
         Font = new Font("Segoe UI", 10f);
 
@@ -126,8 +127,8 @@ internal sealed class MainForm : Form
         page.RowStyles.Add(new RowStyle(SizeType.Absolute, 66));
         page.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
         page.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
-        page.RowStyles.Add(new RowStyle(SizeType.Absolute, 104));
-        page.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));
+        page.RowStyles.Add(new RowStyle(SizeType.Absolute, 154));
+        page.RowStyles.Add(new RowStyle(SizeType.Absolute, 50));
         page.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         page.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
         Controls.Add(page);
@@ -153,17 +154,31 @@ internal sealed class MainForm : Form
         providerSelect.SelectedIndex = 0;
         titleLanguage.Items.AddRange(["Original", "French", "English"]);
         titleLanguage.SelectedIndex = 0;
-        // Split controls across two rows instead of clipping them on DPI-scaled Windows.
-        var metadataPanel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2 };
+        // Each control row is independent. Vertical stacking is robust to
+        // Windows display scaling and does not rely on FlowLayoutPanel wrapping.
+        var metadataPanel = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3,
+            Margin = Padding.Empty, AutoScroll = true
+        };
         metadataPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        metadataPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
-        metadataPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
-        var metadataInputs = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, AutoScroll = false };
+        metadataPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 46));
+        metadataPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 46));
+        metadataPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
+        var metadataInputs = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill, WrapContents = false, AutoScroll = true,
+            FlowDirection = FlowDirection.LeftToRight, Margin = Padding.Empty
+        };
         metadataInputs.Controls.AddRange([
             new Label { Text = "Metadata:", AutoSize = true, Padding = new Padding(0, 7, 0, 0) },
             providerSelect, apiKey, tvdbPin, titleLanguage
         ]);
-        var metadataActions = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, AutoScroll = false };
+        var metadataActions = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill, WrapContents = false, AutoScroll = true,
+            FlowDirection = FlowDirection.LeftToRight, Margin = Padding.Empty
+        };
         metadataActions.Controls.AddRange([
             useMetadataYear, cacheEnabled, checkButton, cancelLookupButton
         ]);
@@ -190,12 +205,24 @@ internal sealed class MainForm : Form
         attribution.LinkClicked += (_, _) => MessageBox.Show(this,
             "This product uses the TMDB API but is not endorsed or certified by TMDB.\n\nThe Movie Database: https://www.themoviedb.org",
             "TMDb credits", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        metadataActions.Controls.Add(attribution);
+        metadataPanel.Controls.Add(attribution, 0, 2);
 
-        var filterRow = NewRow(labelFirst: true);
-        filterRow.Controls.Add(new Label { Text = "Filter:", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 0);
-        filterRow.Controls.Add(filterText, 1, 0);
-        page.Controls.Add(filterRow, 0, 4);
+        // Explicit anchors avoid the stretched first column / tiny textbox
+        // behaviour seen in TableLayoutPanel with WinForms DPI scaling.
+        var filterPanel = new Panel { Dock = DockStyle.Fill, Margin = Padding.Empty };
+        var filterLabel = new Label
+        {
+            Text = "Filter:", AutoSize = true, Location = new Point(6, 12)
+        };
+        filterText.Dock = DockStyle.None;
+        filterText.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+        filterText.Location = new Point(95, 8);
+        filterText.Width = Math.Max(250, filterPanel.ClientSize.Width - 110);
+        filterPanel.Controls.Add(filterLabel);
+        filterPanel.Controls.Add(filterText);
+        filterPanel.Resize += (_, _) =>
+            filterText.Width = Math.Max(150, filterPanel.ClientSize.Width - filterText.Left - 12);
+        page.Controls.Add(filterPanel, 0, 4);
 
         grid.Columns.Add("Type", "Type");
         grid.Columns.Add("Title", "Detected title");
@@ -223,19 +250,15 @@ internal sealed class MainForm : Form
         FormClosing += (_, _) => { scanCancellation?.Cancel(); lookupCancellation?.Cancel(); };
     }
 
-    private static TableLayoutPanel NewRow(bool labelFirst = false)
+    private static TableLayoutPanel NewRow()
     {
-        var row = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = Padding.Empty };
-        if (labelFirst)
+        var row = new TableLayoutPanel
         {
-            row.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 80));
-            row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        }
-        else
-        {
-            row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            row.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 125));
-        }
+            Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1,
+            Margin = Padding.Empty
+        };
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 125));
         row.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         return row;
     }
