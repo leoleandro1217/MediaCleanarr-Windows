@@ -46,7 +46,7 @@ internal sealed class MetadataCache
 
     public static string Key(MediaEntry item, string provider, string language)
     {
-        var text = string.Join("|", "v1", provider, language, item.Type,
+        var text = string.Join("|", "v2", provider, language, item.Type,
             item.Title.Trim().ToLowerInvariant(), item.Detail.Trim().ToLowerInvariant());
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
     }
