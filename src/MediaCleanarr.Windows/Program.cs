@@ -100,6 +100,9 @@ internal sealed class MainForm : Form
     private readonly ComboBox providerSelect = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 115 };
     private readonly TextBox apiKey = new() { Width = 175, UseSystemPasswordChar = true, PlaceholderText = "API key" };
     private readonly TextBox tvdbPin = new() { Width = 100, UseSystemPasswordChar = true, PlaceholderText = "TVDB PIN" };
+    private readonly ComboBox titleLanguage = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 110 };
+    private readonly CheckBox cacheEnabled = new() { Text = "SQLite cache", Checked = true, AutoSize = true };
+    private MetadataCache? metadataCache;
     private readonly Button checkButton = new() { Text = "Check metadata", AutoSize = true };
     private readonly Button cancelLookupButton = new() { Text = "Stop lookup", AutoSize = true, Enabled = false };
     private readonly CheckBox useMetadataYear = new() { Text = "Show year in title", Checked = true, AutoSize = true };
@@ -147,25 +150,37 @@ internal sealed class MainForm : Form
         actionRow.Controls.AddRange([recursiveCheck, scanButton, stopButton, exportButton]);
         page.Controls.Add(actionRow, 0, 2);
 
-        providerSelect.Items.AddRange(["Off", "OMDb", "TheTVDB"]);
+        providerSelect.Items.AddRange(["TMDb", "OMDb", "TheTVDB", "Off"]);
         providerSelect.SelectedIndex = 0;
+        titleLanguage.Items.AddRange(["Original", "French", "English"]);
+        titleLanguage.SelectedIndex = 0;
         var metadataRow = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, AutoScroll = true };
         metadataRow.Controls.AddRange([
             new Label { Text = "Metadata:", AutoSize = true, Padding = new Padding(0, 7, 0, 0) },
-            providerSelect, apiKey, tvdbPin, checkButton, cancelLookupButton, useMetadataYear
+            providerSelect, apiKey, tvdbPin, titleLanguage, useMetadataYear, cacheEnabled, checkButton, cancelLookupButton
         ]);
         page.Controls.Add(metadataRow, 0, 3);
-        apiKey.Enabled = false;
+        apiKey.Enabled = true;
         tvdbPin.Enabled = false;
+        titleLanguage.Enabled = true;
         checkButton.Enabled = false;
         providerSelect.SelectedIndexChanged += (_, _) => {
             apiKey.Enabled = providerSelect.Text != "Off";
             tvdbPin.Enabled = providerSelect.Text == "TheTVDB";
+            titleLanguage.Enabled = providerSelect.Text == "TMDb";
             checkButton.Enabled = providerSelect.Text != "Off" && entries.Count > 0 && scanCancellation == null && lookupCancellation == null;
         };
         checkButton.Click += async (_, _) => await LookupAsync();
         cancelLookupButton.Click += (_, _) => lookupCancellation?.Cancel();
         useMetadataYear.CheckedChanged += (_, _) => RefreshDisplay();
+        var attribution = new LinkLabel {
+            Text = "TMDb attribution", AutoSize = true,
+            Margin = new Padding(6, 8, 3, 3)
+        };
+        attribution.LinkClicked += (_, _) => MessageBox.Show(this,
+            "This product uses the TMDB API but is not endorsed or certified by TMDB.\n\nThe Movie Database: https://www.themoviedb.org",
+            "TMDb credits", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        metadataRow.Controls.Add(attribution);
 
         var filterRow = NewRow();
         filterRow.Controls.Add(new Label { Text = "Filter:", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 0);
@@ -327,7 +342,7 @@ internal sealed class MainForm : Form
     private string DisplayTitle(MediaEntry entry)
     {
         var hasMatch = matches.TryGetValue(entry.Path, out var match);
-        var title = hasMatch && match!.Status != "Not found" ? match.Title : entry.Title;
+        var title = hasMatch && match!.Status == "Matched" ? match.Title : entry.Title;
         var year = hasMatch && match!.Year.Length == 4 ? match.Year :
             Regex.Match(entry.Detail, @"(?:19|20)\d{2}").Value;
         if (useMetadataYear.Checked && year.Length == 4) return $"{title} ({year})";
@@ -355,6 +370,17 @@ internal sealed class MainForm : Form
             return;
         }
         var provider = providerSelect.Text;
+        var language = provider == "TMDb" ? titleLanguage.Text : "Default";
+        MetadataCache? cache = null;
+        if (cacheEnabled.Checked)
+        {
+            try { cache = metadataCache ??= new MetadataCache(); }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "SQLite cache could not open: " + ex.Message +
+                    "\nOnline lookup will continue without caching.", "Cache warning");
+            }
+        }
         lookupCancellation = new CancellationTokenSource();
         var token = lookupCancellation.Token;
         checkButton.Enabled = false;
@@ -363,6 +389,8 @@ internal sealed class MainForm : Form
         providerSelect.Enabled = false;
         apiKey.Enabled = false;
         tvdbPin.Enabled = false;
+        titleLanguage.Enabled = false;
+        cacheEnabled.Enabled = false;
         busy.Visible = true;
         try
         {
@@ -374,12 +402,27 @@ internal sealed class MainForm : Form
                 if (string.IsNullOrWhiteSpace(tvdbToken)) throw new InvalidOperationException("TheTVDB did not return an authentication token.");
             }
             var done = 0;
+            var cacheHits = 0;
             foreach (var entry in entries.ToArray())
             {
                 token.ThrowIfCancellationRequested();
                 try
                 {
-                    matches[entry.Path] = await MetadataLookup.FindAsync(entry, provider, key, tvdbToken, token);
+                    var cacheKey = MetadataCache.Key(entry, provider, language);
+                    var cached = cache?.Get(cacheKey);
+                    if (cached is not null)
+                    {
+                        matches[entry.Path] = cached;
+                        cacheHits++;
+                    }
+                    else
+                    {
+                        var found = provider == "TMDb"
+                            ? await TmdbLookup.FindAsync(entry, key, language, token)
+                            : await MetadataLookup.FindAsync(entry, provider, key, tvdbToken, token);
+                        matches[entry.Path] = found;
+                        cache?.Put(cacheKey, found);
+                    }
                 }
                 catch (OperationCanceledException) { throw; }
                 catch (Exception ex)
@@ -393,12 +436,12 @@ internal sealed class MainForm : Form
                 if (done % 10 == 0 || done == entries.Count)
                 {
                     RefreshDisplay();
-                    status.Text = $"Metadata: {done:N0}/{entries.Count:N0} · {matches.Values.Count(x => x.Status == "Matched")} matched · {matches.Values.Count(x => x.Status == "Review")} to review";
+                    status.Text = $"Metadata: {done:N0}/{entries.Count:N0} · {matches.Values.Count(x => x.Status == "Matched")} matched · {matches.Values.Count(x => x.Status == "Review")} to review · {cacheHits} cached";
                 }
-                await Task.Delay(200, token);
+                if (cacheHits != done) await Task.Delay(200, token);
             }
             RefreshDisplay();
-            status.Text = $"Metadata complete: {done} files · {matches.Values.Count(x => x.Status == "Matched")} matched · {matches.Values.Count(x => x.Status == "Review")} to review.";
+            status.Text = $"Metadata complete: {done} files · {matches.Values.Count(x => x.Status == "Matched")} matched · {matches.Values.Count(x => x.Status == "Review")} to review · {cacheHits} cached.";
         }
         catch (OperationCanceledException) { status.Text = "Metadata lookup stopped. Existing results retained."; }
         catch (Exception ex)
@@ -415,15 +458,14 @@ internal sealed class MainForm : Form
             providerSelect.Enabled = true;
             apiKey.Enabled = providerSelect.Text != "Off";
             tvdbPin.Enabled = providerSelect.Text == "TheTVDB";
+            titleLanguage.Enabled = providerSelect.Text == "TMDb";
+            cacheEnabled.Enabled = true;
             busy.Visible = false;
         }
     }
 
     private bool Matches(MediaEntry e, string text) =>
         string.Join(" ", e.Type, DisplayTitle(e), e.Detail, e.Path, matches.TryGetValue(e.Path, out var match) ? match.Status : "").Contains(text, StringComparison.OrdinalIgnoreCase);
-
-    private static bool LegacyMatches(MediaEntry e, string text) =>
-        string.Join(" ", e.Type, e.Title, e.Detail, e.Path).Contains(text, StringComparison.OrdinalIgnoreCase);
 
     private void ApplyFilter()
     {
