@@ -111,6 +111,8 @@ internal sealed class MainForm : Form
     public MainForm()
     {
         Text = "MediaCleanarr Windows — .NET Alpha";
+        // Reuse the embedded executable icon for the window and taskbar.
+        Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? SystemIcons.Application;
         StartPosition = FormStartPosition.CenterScreen;
         MinimumSize = new Size(800, 500);
         Size = new Size(1180, 740);
