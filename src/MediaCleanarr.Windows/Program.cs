@@ -97,7 +97,15 @@ internal sealed class MainForm : Form
         AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
         BackgroundColor = Color.White, BorderStyle = BorderStyle.FixedSingle
     };
+    private readonly ComboBox providerSelect = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 115 };
+    private readonly TextBox apiKey = new() { Width = 175, UseSystemPasswordChar = true, PlaceholderText = "API key" };
+    private readonly TextBox tvdbPin = new() { Width = 100, UseSystemPasswordChar = true, PlaceholderText = "TVDB PIN" };
+    private readonly Button checkButton = new() { Text = "Check metadata", AutoSize = true };
+    private readonly Button cancelLookupButton = new() { Text = "Stop lookup", AutoSize = true, Enabled = false };
+    private readonly CheckBox useMetadataYear = new() { Text = "Show year in title", Checked = true, AutoSize = true };
     private readonly List<MediaEntry> entries = new();
+    private readonly Dictionary<string, MetadataMatch> matches = new(StringComparer.OrdinalIgnoreCase);
+    private CancellationTokenSource? lookupCancellation;
     private CancellationTokenSource? scanCancellation;
 
     public MainForm()
@@ -108,9 +116,10 @@ internal sealed class MainForm : Form
         Size = new Size(1180, 740);
         Font = new Font("Segoe UI", 10f);
 
-        var page = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(14), ColumnCount = 1, RowCount = 6 };
+        var page = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(14), ColumnCount = 1, RowCount = 7 };
         page.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         page.RowStyles.Add(new RowStyle(SizeType.Absolute, 66));
+        page.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
         page.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
         page.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
         page.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
@@ -136,34 +145,56 @@ internal sealed class MainForm : Form
         actionRow.Controls.AddRange([recursiveCheck, scanButton, stopButton, exportButton]);
         page.Controls.Add(actionRow, 0, 2);
 
+        providerSelect.Items.AddRange(["Off", "OMDb", "TheTVDB"]);
+        providerSelect.SelectedIndex = 0;
+        var metadataRow = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, AutoScroll = true };
+        metadataRow.Controls.AddRange([
+            new Label { Text = "Metadata:", AutoSize = true, Padding = new Padding(0, 7, 0, 0) },
+            providerSelect, apiKey, tvdbPin, checkButton, cancelLookupButton, useMetadataYear
+        ]);
+        page.Controls.Add(metadataRow, 0, 3);
+        apiKey.Enabled = false;
+        tvdbPin.Enabled = false;
+        checkButton.Enabled = false;
+        providerSelect.SelectedIndexChanged += (_, _) => {
+            apiKey.Enabled = providerSelect.Text != "Off";
+            tvdbPin.Enabled = providerSelect.Text == "TheTVDB";
+            checkButton.Enabled = providerSelect.Text != "Off" && entries.Count > 0 && scanCancellation == null && lookupCancellation == null;
+        };
+        checkButton.Click += async (_, _) => await LookupAsync();
+        cancelLookupButton.Click += (_, _) => lookupCancellation?.Cancel();
+        useMetadataYear.CheckedChanged += (_, _) => RefreshDisplay();
+
         var filterRow = NewRow();
         filterRow.Controls.Add(new Label { Text = "Filter:", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 0);
         filterRow.Controls.Add(filterText, 1, 0);
         filterRow.ColumnStyles[0].Width = 70;
-        page.Controls.Add(filterRow, 0, 3);
+        page.Controls.Add(filterRow, 0, 4);
 
         grid.Columns.Add("Type", "Type");
         grid.Columns.Add("Title", "Detected title");
+        grid.Columns.Add("Match", "Metadata status");
         grid.Columns.Add("Detail", "Year / Episode");
         grid.Columns.Add("Size", "Size (GiB)");
         grid.Columns.Add("Path", "Full path");
         grid.Columns["Type"]!.FillWeight = 55;
         grid.Columns["Title"]!.FillWeight = 115;
+        grid.Columns["Match"]!.FillWeight = 70;
         grid.Columns["Detail"]!.FillWeight = 65;
         grid.Columns["Size"]!.FillWeight = 55;
         grid.Columns["Path"]!.FillWeight = 200;
-        page.Controls.Add(grid, 0, 4);
+        page.Controls.Add(grid, 0, 5);
         var footer = new Panel { Dock = DockStyle.Fill };
         footer.Controls.Add(status);
         footer.Controls.Add(busy);
-        page.Controls.Add(footer, 0, 5);
+        page.Controls.Add(footer, 0, 6);
 
         browseButton.Click += (_, _) => Browse();
         scanButton.Click += async (_, _) => await ScanAsync();
         stopButton.Click += (_, _) => scanCancellation?.Cancel();
         exportButton.Click += (_, _) => ExportCsv();
         filterText.TextChanged += (_, _) => ApplyFilter();
-        FormClosing += (_, _) => scanCancellation?.Cancel();
+        FormClosing += (_, _) => { scanCancellation?.Cancel(); lookupCancellation?.Cancel(); };
     }
 
     private static TableLayoutPanel NewRow()
@@ -191,6 +222,7 @@ internal sealed class MainForm : Form
             return;
         }
         entries.Clear();
+        matches.Clear();
         grid.Rows.Clear();
         scanCancellation = new CancellationTokenSource();
         var token = scanCancellation.Token;
@@ -269,6 +301,7 @@ internal sealed class MainForm : Form
         recursiveCheck.Enabled = !running;
         stopButton.Enabled = running;
         exportButton.Enabled = !running && entries.Count > 0;
+        checkButton.Enabled = !running && entries.Count > 0 && providerSelect.Text != "Off" && lookupCancellation == null;
         busy.Visible = running;
         if (running) status.Text = "Scanning…";
     }
@@ -280,7 +313,7 @@ internal sealed class MainForm : Form
         while (shown < 300 && queue.TryDequeue(out var entry))
         {
             entries.Add(entry);
-            var index = grid.Rows.Add(entry.Type, entry.Title, entry.Detail, entry.Size, entry.Path);
+            var index = grid.Rows.Add(entry.Type, DisplayTitle(entry), "", entry.Detail, entry.Size, entry.Path);
             var term = filterText.Text.Trim();
             if (term.Length > 0) grid.Rows[index].Visible = Matches(entry, term);
             shown++;
@@ -289,7 +322,105 @@ internal sealed class MainForm : Form
         if (shown > 0) status.Text = $"Scanning… {entries.Count:N0} files";
     }
 
-    private static bool Matches(MediaEntry e, string text) =>
+    private string DisplayTitle(MediaEntry entry)
+    {
+        var hasMatch = matches.TryGetValue(entry.Path, out var match);
+        var title = hasMatch && match!.Status != "Not found" ? match.Title : entry.Title;
+        var year = hasMatch && match!.Year.Length == 4 ? match.Year :
+            Regex.Match(entry.Detail, @"(?:19|20)\d{2}").Value;
+        if (useMetadataYear.Checked && year.Length == 4) return $"{title} ({year})";
+        return title;
+    }
+
+    private void RefreshDisplay()
+    {
+        for (var i = 0; i < entries.Count; i++)
+        {
+            var entry = entries[i];
+            grid.Rows[i].Cells["Title"].Value = DisplayTitle(entry);
+            grid.Rows[i].Cells["Match"].Value = matches.TryGetValue(entry.Path, out var found) ? $"{found.Source}: {found.Status}" : "";
+        }
+        ApplyFilter();
+    }
+
+    private async Task LookupAsync()
+    {
+        if (providerSelect.Text == "Off" || entries.Count == 0) return;
+        var key = apiKey.Text.Trim();
+        if (key.Length == 0)
+        {
+            MessageBox.Show(this, "Enter your API key first.", "Metadata", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+        var provider = providerSelect.Text;
+        lookupCancellation = new CancellationTokenSource();
+        var token = lookupCancellation.Token;
+        checkButton.Enabled = false;
+        scanButton.Enabled = false;
+        cancelLookupButton.Enabled = true;
+        providerSelect.Enabled = false;
+        apiKey.Enabled = false;
+        tvdbPin.Enabled = false;
+        busy.Visible = true;
+        try
+        {
+            string? tvdbToken = null;
+            if (provider == "TheTVDB")
+            {
+                status.Text = "Authenticating to TheTVDB…";
+                tvdbToken = await MetadataLookup.LoginTvdbAsync(key, tvdbPin.Text.Trim(), token);
+                if (string.IsNullOrWhiteSpace(tvdbToken)) throw new InvalidOperationException("TheTVDB did not return an authentication token.");
+            }
+            var done = 0;
+            foreach (var entry in entries.ToArray())
+            {
+                token.ThrowIfCancellationRequested();
+                try
+                {
+                    matches[entry.Path] = await MetadataLookup.FindAsync(entry, provider, key, tvdbToken, token);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex)
+                {
+                    // Do not show secret credentials or a URL containing credentials.
+                    matches[entry.Path] = new(entry.Title, "", provider, "Error");
+                    status.Text = $"Metadata request failed: {ex.GetType().Name}. Check key, access and API limits.";
+                    if (done == 0) throw new InvalidOperationException($"First lookup failed ({ex.GetType().Name}). Check your credentials, access and API limits.");
+                }
+                done++;
+                if (done % 10 == 0 || done == entries.Count)
+                {
+                    RefreshDisplay();
+                    status.Text = $"Metadata: {done:N0}/{entries.Count:N0} · {matches.Values.Count(x => x.Status == "Matched")} matched · {matches.Values.Count(x => x.Status == "Review")} to review";
+                }
+                await Task.Delay(200, token);
+            }
+            RefreshDisplay();
+            status.Text = $"Metadata complete: {done} files · {matches.Values.Count(x => x.Status == "Matched")} matched · {matches.Values.Count(x => x.Status == "Review")} to review.";
+        }
+        catch (OperationCanceledException) { status.Text = "Metadata lookup stopped. Existing results retained."; }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Metadata lookup", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+        finally
+        {
+            lookupCancellation.Dispose();
+            lookupCancellation = null;
+            scanButton.Enabled = true;
+            checkButton.Enabled = providerSelect.Text != "Off" && entries.Count > 0;
+            cancelLookupButton.Enabled = false;
+            providerSelect.Enabled = true;
+            apiKey.Enabled = providerSelect.Text != "Off";
+            tvdbPin.Enabled = providerSelect.Text == "TheTVDB";
+            busy.Visible = false;
+        }
+    }
+
+    private bool Matches(MediaEntry e, string text) =>
+        string.Join(" ", e.Type, DisplayTitle(e), e.Detail, e.Path, matches.TryGetValue(e.Path, out var match) ? match.Status : "").Contains(text, StringComparison.OrdinalIgnoreCase);
+
+    private static bool LegacyMatches(MediaEntry e, string text) =>
         string.Join(" ", e.Type, e.Title, e.Detail, e.Path).Contains(text, StringComparison.OrdinalIgnoreCase);
 
     private void ApplyFilter()
@@ -310,9 +441,12 @@ internal sealed class MainForm : Form
         try
         {
             using var writer = new StreamWriter(dialog.FileName, false, new UTF8Encoding(true));
-            writer.WriteLine("Type,Detected title,Year / Episode,Size (GiB),Full path");
+            writer.WriteLine("Type,Detected title,Display title,Year / Episode,Metadata title,Metadata year,Metadata source,Metadata status,Size (GiB),Full path");
             foreach (var e in entries)
-                writer.WriteLine(string.Join(",", new[] { e.Type, e.Title, e.Detail, e.Size, e.Path }.Select(Csv)));
+            {
+                matches.TryGetValue(e.Path, out var m);
+                writer.WriteLine(string.Join(",", new[] { e.Type, e.Title, DisplayTitle(e), e.Detail, m?.Title ?? "", m?.Year ?? "", m?.Source ?? "", m?.Status ?? "", e.Size, e.Path }.Select(Csv)));
+            }
             status.Text = $"Exported {entries.Count:N0} entries: {dialog.FileName}";
         }
         catch (IOException ex)
