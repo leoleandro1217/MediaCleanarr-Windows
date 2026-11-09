@@ -38,12 +38,12 @@ jobs:
           name: MediaCleanarr-Windows-win-x64
           path: publish/MediaCleanarr-Windows.exe
           if-no-files-found: error
-      - name: Publish Alpha 3 release
+      - name: Publish Alpha 4 release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.2.0-alpha.3
+          tag_name: v0.2.0-alpha.4
           target_commitish: ${{ github.sha }}
-          name: MediaCleanarr Windows v0.2.0 Alpha 3 (.NET)
+          name: MediaCleanarr Windows v0.2.0 Alpha 4 (.NET)
           body: |
             Windows x64 portable, self-contained .NET 10 build.
             Local media inventory, filtering and CSV export.
