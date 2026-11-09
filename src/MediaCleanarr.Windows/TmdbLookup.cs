@@ -62,6 +62,8 @@ internal static class TmdbLookup
             var verdict = bestScore >= 0.83 ? "Matched" : "Review";
             // Guard against accepting a dissimilar candidate solely due to a coincidental year.
             if (bestScore < 0.50) verdict = "Review";
+            if (expectedYear.Length == 4 && yearValue.Length == 4 && expectedYear != yearValue)
+                verdict = "Review";
             return new(finalTitle, yearValue, "TMDb", verdict);
         }
     }
