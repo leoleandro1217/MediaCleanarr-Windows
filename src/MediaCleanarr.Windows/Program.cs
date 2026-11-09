@@ -117,7 +117,7 @@ internal sealed class MainForm : Form
         // Reuse the embedded executable icon for the window and taskbar.
         Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? SystemIcons.Application;
         StartPosition = FormStartPosition.CenterScreen;
-        MinimumSize = new Size(800, 500);
+        MinimumSize = new Size(850, 560);
         Size = new Size(1180, 740);
         Font = new Font("Segoe UI", 10f);
 
@@ -126,8 +126,8 @@ internal sealed class MainForm : Form
         page.RowStyles.Add(new RowStyle(SizeType.Absolute, 66));
         page.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
         page.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
-        page.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
-        page.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
+        page.RowStyles.Add(new RowStyle(SizeType.Absolute, 104));
+        page.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));
         page.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         page.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
         Controls.Add(page);
@@ -143,7 +143,6 @@ internal sealed class MainForm : Form
         var folderRow = NewRow();
         folderRow.Controls.Add(folderText, 0, 0);
         folderRow.Controls.Add(browseButton, 1, 0);
-        folderRow.ColumnStyles[0].Width = 100;
         page.Controls.Add(folderRow, 0, 1);
 
         var actionRow = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
@@ -154,19 +153,30 @@ internal sealed class MainForm : Form
         providerSelect.SelectedIndex = 0;
         titleLanguage.Items.AddRange(["Original", "French", "English"]);
         titleLanguage.SelectedIndex = 0;
-        var metadataRow = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, AutoScroll = true };
-        metadataRow.Controls.AddRange([
+        // Split controls across two rows instead of clipping them on DPI-scaled Windows.
+        var metadataPanel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2 };
+        metadataPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        metadataPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
+        metadataPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
+        var metadataInputs = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, AutoScroll = false };
+        metadataInputs.Controls.AddRange([
             new Label { Text = "Metadata:", AutoSize = true, Padding = new Padding(0, 7, 0, 0) },
-            providerSelect, apiKey, tvdbPin, titleLanguage, useMetadataYear, cacheEnabled, checkButton, cancelLookupButton
+            providerSelect, apiKey, tvdbPin, titleLanguage
         ]);
-        page.Controls.Add(metadataRow, 0, 3);
+        var metadataActions = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, AutoScroll = false };
+        metadataActions.Controls.AddRange([
+            useMetadataYear, cacheEnabled, checkButton, cancelLookupButton
+        ]);
+        metadataPanel.Controls.Add(metadataInputs, 0, 0);
+        metadataPanel.Controls.Add(metadataActions, 0, 1);
+        page.Controls.Add(metadataPanel, 0, 3);
         apiKey.Enabled = true;
-        tvdbPin.Enabled = false;
+        tvdbPin.Visible = false;
         titleLanguage.Enabled = true;
         checkButton.Enabled = false;
         providerSelect.SelectedIndexChanged += (_, _) => {
             apiKey.Enabled = providerSelect.Text != "Off";
-            tvdbPin.Enabled = providerSelect.Text == "TheTVDB";
+            tvdbPin.Visible = providerSelect.Text == "TheTVDB";
             titleLanguage.Enabled = providerSelect.Text == "TMDb";
             checkButton.Enabled = providerSelect.Text != "Off" && entries.Count > 0 && scanCancellation == null && lookupCancellation == null;
         };
@@ -180,12 +190,11 @@ internal sealed class MainForm : Form
         attribution.LinkClicked += (_, _) => MessageBox.Show(this,
             "This product uses the TMDB API but is not endorsed or certified by TMDB.\n\nThe Movie Database: https://www.themoviedb.org",
             "TMDb credits", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        metadataRow.Controls.Add(attribution);
+        metadataActions.Controls.Add(attribution);
 
-        var filterRow = NewRow();
+        var filterRow = NewRow(labelFirst: true);
         filterRow.Controls.Add(new Label { Text = "Filter:", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 0);
         filterRow.Controls.Add(filterText, 1, 0);
-        filterRow.ColumnStyles[0].Width = 70;
         page.Controls.Add(filterRow, 0, 4);
 
         grid.Columns.Add("Type", "Type");
@@ -214,11 +223,19 @@ internal sealed class MainForm : Form
         FormClosing += (_, _) => { scanCancellation?.Cancel(); lookupCancellation?.Cancel(); };
     }
 
-    private static TableLayoutPanel NewRow()
+    private static TableLayoutPanel NewRow(bool labelFirst = false)
     {
-        var row = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2 };
-        row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        var row = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = Padding.Empty };
+        if (labelFirst)
+        {
+            row.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 80));
+            row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        }
+        else
+        {
+            row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            row.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 125));
+        }
         row.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         return row;
     }
@@ -457,7 +474,7 @@ internal sealed class MainForm : Form
             cancelLookupButton.Enabled = false;
             providerSelect.Enabled = true;
             apiKey.Enabled = providerSelect.Text != "Off";
-            tvdbPin.Enabled = providerSelect.Text == "TheTVDB";
+            tvdbPin.Visible = providerSelect.Text == "TheTVDB";
             titleLanguage.Enabled = providerSelect.Text == "TMDb";
             cacheEnabled.Enabled = true;
             busy.Visible = false;
