@@ -6,9 +6,9 @@
 
 **[Windows x64 releases](https://github.com/leoleandro1217/MediaCleanarr-Windows/releases)**
 
-Download **v0.2.0-alpha.3** (`MediaCleanarr-Windows.exe`) after its GitHub Actions build succeeds. This version is **self-contained**: no Python, Qt, .NET SDK or .NET runtime installation needed. Windows 10/11 x64 only.
+Download **v0.2.0-alpha.4** (`MediaCleanarr-Windows.exe`) after its GitHub Actions build succeeds. This version is **self-contained**: no Python, Qt, .NET SDK or .NET runtime installation needed. Windows 10/11 x64 only.
 
-Télécharge la version **v0.2.0-alpha.3** après la compilation GitHub Actions. L'exécutable est **autonome**, sans installation de Python, Qt ou .NET. Windows 10/11 x64.
+Télécharge la version **v0.2.0-alpha.4** après la compilation GitHub Actions. L'exécutable est **autonome**, sans installation de Python, Qt ou .NET. Windows 10/11 x64.
 
 **Note:** Alpha binary is not code-signed. Windows SmartScreen can warn about unknown publishers. Confirm the source and publisher before running. Do not turn off Windows security settings.
 
@@ -16,7 +16,7 @@ Télécharge la version **v0.2.0-alpha.3** après la compilation GitHub Actions.
 
 - Native Windows folder picker (including accessible network paths) / Sélection d'un dossier local ou réseau
 - Recursive local video inventory / Recherche récursive des vidéos
-- Approximate movie/TV parsing (filename, year, season and episode) / Reconnaissance approximative des films et séries
+- Improved movie/TV parsing (filename, year, season and episode; strips 4K, UHD, HDR, codecs and release tags) / Reconnaissance des films et séries avec nettoyage des tags techniques (4K, HDR, UHD, codecs)
 - Search and CSV export / Recherche et export CSV
 - Cancel ongoing scan / Arrêter le scan
 - **Read-only**: never renames, moves or deletes a file / **Lecture seule** : aucun fichier modifié
@@ -39,7 +39,7 @@ Build an independent portable exe:
 dotnet publish src/MediaCleanarr.Windows/MediaCleanarr.Windows.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:DebugType=None -o publish
 ```
 
-GitHub Actions builds on a Windows runner at each push to `main` and publishes the pre-release `v0.2.0-alpha.3`.
+GitHub Actions builds on a Windows runner at each push to `main` and publishes the pre-release `v0.2.0-alpha.4`.
 
 ## Privacy
 
