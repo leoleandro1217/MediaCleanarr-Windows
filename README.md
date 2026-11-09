@@ -6,9 +6,9 @@
 
 **[Windows x64 releases](https://github.com/leoleandro1217/MediaCleanarr-Windows/releases)**
 
-Download **v0.2.0-alpha.6** (`MediaCleanarr-Windows.exe`) after its GitHub Actions build succeeds. This version is **self-contained**: no Python, Qt, .NET SDK or .NET runtime installation needed. Windows 10/11 x64 only.
+Download **v0.2.0-alpha.7** (`MediaCleanarr-Windows.exe`) after its GitHub Actions build succeeds. This version is **self-contained**: no Python, Qt, .NET SDK or .NET runtime installation needed. Windows 10/11 x64 only.
 
-Télécharge la version **v0.2.0-alpha.6** après la compilation GitHub Actions. L'exécutable est **autonome**, sans installation de Python, Qt ou .NET. Windows 10/11 x64.
+Télécharge la version **v0.2.0-alpha.7** après la compilation GitHub Actions. L'exécutable est **autonome**, sans installation de Python, Qt ou .NET. Windows 10/11 x64.
 
 **Note:** Alpha binary is not code-signed. Windows SmartScreen can warn about unknown publishers. Confirm the source and publisher before running. Do not turn off Windows security settings.
 
@@ -23,9 +23,15 @@ Télécharge la version **v0.2.0-alpha.6** après la compilation GitHub Actions.
 
 Extensions: `mkv`, `mp4`, `avi`, `mov`, `wmv`, `m4v`, `ts`, `mpg`, `mpeg`, `webm`.
 
-**Optional metadata checks:** Select OMDb or TheTVDB, enter your own API key (plus a subscriber PIN if required for TheTVDB), scan files, then click **Check metadata**. The displayed title can include the movie or series year. Results are marked Matched / Review / Not found; inspect uncertain matches. Metadata requests send the detected title to the selected provider. Keys are held only in memory and are not stored in the app or exported to CSV.\n\n**Branding:** The Windows executable and application window use the MediaCleanarr custom logo icon. This does not suppress Windows SmartScreen warnings; the alpha remains unsigned.
+**Metadata lookup:** TMDb is the default option. Choose TMDb (or OMDb / TheTVDB), enter your own API key, scan files, then click **Check metadata**. TMDb accepts its v3 API key or an API Read Access Token. TMDb title selection: **Original**, **French**, **English**. The displayed title can include the release year. Confidence is marked **Matched**, **Review**, or **Not found**. Uncertain matches do not overwrite the local displayed title.
 
-**Not implemented yet:** C411 comparison, choosing a specific regional title, automatic renaming, movie organization. OMDb does not guarantee the original-language title; its returned title is only the service's preferred result.
+**SQLite cache:** Enabled by default. Disable with the **SQLite cache** checkbox. The database is stored at `%LOCALAPPDATA%\MediaCleanarr-Windows\metadata-cache.sqlite`. It contains provider, language, title/type/year lookup keys and responses, but **no credentials or file paths**. Positive results expire after 90 days; negative results after 7 days. API keys are only held in memory. Online lookups send the searched title to the provider.
+
+**TMDb attribution:** This product uses the TMDB API but is not endorsed or certified by TMDB. [The Movie Database](https://www.themoviedb.org) · [Official logo and attribution](https://www.themoviedb.org/about/logos-attribution).
+
+**Branding:** The Windows executable and application window use the MediaCleanarr custom logo icon. This does not suppress Windows SmartScreen warnings; the alpha remains unsigned.
+
+**Not implemented yet:** C411 comparison, titles for arbitrary regions beyond French/English, automatic renaming, movie organization. For original titles, choose TMDb instead of OMDb.
 
 ## Development / Développement
 
@@ -41,11 +47,11 @@ Build an independent portable exe:
 dotnet publish src/MediaCleanarr.Windows/MediaCleanarr.Windows.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:DebugType=None -o publish
 ```
 
-GitHub Actions builds on a Windows runner at each push to `main` and publishes the pre-release `v0.2.0-alpha.6`.
+GitHub Actions builds on a Windows runner at each push to `main` and publishes the pre-release `v0.2.0-alpha.7`.
 
 ## Privacy
 
-The scanner reads filenames and file sizes on your computer. It doesn't contact media databases or upload your inventory.
+The scanner reads filenames and file sizes locally. Only when you click **Check metadata** does it send title searches to your chosen provider.
 
 ## Project status
 
