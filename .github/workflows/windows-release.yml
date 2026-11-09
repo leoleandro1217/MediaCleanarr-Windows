@@ -3,8 +3,12 @@ name: Windows .NET build and release
 on:
   push:
     branches: [main]
-    tags: ['v*']
   workflow_dispatch:
+
+# Do not let two overlapping builds mutate the same release simultaneously.
+concurrency:
+  group: mediacleanarr-windows-release
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -18,37 +22,33 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-      - name: Verify C# entry point exists
+      - name: Verify entry point
         shell: pwsh
         run: |
-          if (!(Test-Path 'src/MediaCleanarr.Windows/Program.cs')) { throw 'Program.cs missing from checked-out commit' }
+          if (!(Test-Path 'src/MediaCleanarr.Windows/Program.cs')) { throw 'Program.cs missing' }
           if (!(Select-String -Path 'src/MediaCleanarr.Windows/Program.cs' -Pattern 'static void Main\(' -Quiet)) { throw 'Main entry point missing' }
-          git log -1 --oneline
-      - name: Publish standalone x64 Windows executable
-        run: dotnet publish src/MediaCleanarr.Windows/MediaCleanarr.Windows.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:DebugType=None -o publish
-      - name: Upload executable artifact
+      - name: Publish self-contained Windows x64 executable
+        shell: pwsh
+        run: |
+          dotnet publish src/MediaCleanarr.Windows/MediaCleanarr.Windows.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:DebugType=None -o publish
+          if (!(Test-Path 'publish/MediaCleanarr-Windows.exe')) { throw 'EXE not produced' }
+      - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: MediaCleanarr-Windows-win-x64
           path: publish/MediaCleanarr-Windows.exe
-      - name: Publish .NET alpha prerelease
-        if: github.ref == 'refs/heads/main'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: pwsh
-        run: |
-          $tag = 'v0.2.0-alpha.2'
-          $file = 'publish/MediaCleanarr-Windows.exe'
-          gh release view $tag 2>$null
-          if ($LASTEXITCODE -eq 0) {
-            gh release upload $tag $file --clobber
-          } else {
-            gh release create $tag $file --title 'MediaCleanarr Windows v0.2.0 Alpha 2 (.NET)' --notes 'Windows native .NET 10 self-contained x64 prototype. Read-only library scanning, filtering, CSV export. No Python or Qt required.' --prerelease --target "${{ github.sha }}"
-          }
-      - name: Publish tagged release
-        if: startsWith(github.ref, 'refs/tags/v')
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: pwsh
-        run: |
-          gh release create "${{ github.ref_name }}" "publish/MediaCleanarr-Windows.exe" --generate-notes --verify-tag
+          if-no-files-found: error
+      - name: Publish Alpha 3 release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.2.0-alpha.3
+          target_commitish: ${{ github.sha }}
+          name: MediaCleanarr Windows v0.2.0 Alpha 3 (.NET)
+          body: |
+            Windows x64 portable, self-contained .NET 10 build.
+            Local media inventory, filtering and CSV export.
+            Read-only alpha: does not rename, move or delete files.
+          prerelease: true
+          make_latest: false
+          files: publish/MediaCleanarr-Windows.exe
+          fail_on_unmatched_files: true
