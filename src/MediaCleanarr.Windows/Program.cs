@@ -227,7 +227,7 @@ internal sealed class MainForm : Form
                 await Task.Delay(75);
             }
             await work;
-            Drain(queue);
+            while (!queue.IsEmpty) Drain(queue);
             status.Text = $"{entries.Count:N0} files found · {errors} inaccessible directories/files" +
                           (token.IsCancellationRequested ? " · Stopped" : " · Finished") + " · Nothing changed";
         }
