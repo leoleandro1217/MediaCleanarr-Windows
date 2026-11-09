@@ -34,10 +34,13 @@ internal static partial class MediaParser
     [GeneratedRegex(@"(?<!\d)(19\d{2}|20\d{2})(?!\d)")]
     private static partial Regex YearPattern();
 
-    [GeneratedRegex(@"(?i)\b(?:2160p|1080p|720p|480p|bluray|brrip|webrip|web-dl|hdtv|x264|x265|h264|h265|hevc|remux|multi|french|vostfr|proper|repack)\b")]
-    private static partial Regex NoisePattern();
+    // Match the beginning of a release-technical suffix, not just remove individual
+    // tokens: anything after the suffix belongs to the release, not to the film title.
+    // Avoid \b because dots/underscores and trailing brackets are common in filenames.
+    [GeneratedRegex(@"(?i)(?<![A-Za-z0-9])(?:4320p|2160p|1080p|720p|480p|4k(?:light)?|8k|uhd|ultrahd|ultra[ ._-]?hd|bluray|blu[ ._-]?ray|brrip|bdrip|webrip|web[ ._-]?dl|hdtv|hdr(?:10(?:\+|plus)?)?|dolby[ ._-]?vision|dovi|dv|imax|hevc(?:10)?|x26[45]|h[ ._-]?26[45]|av1|10[ ._-]?bits?|8[ ._-]?bits?|bt[ ._-]?2020|truehd|atmos|dts(?:[ ._-]?hd)?|ddp|eac3|ac3|aac|multi|vff|vfq|vf2|vof|vostfr|french|proper|repack|remux|extended|unrated)(?![A-Za-z0-9])")]
+    private static partial Regex ReleaseTagPattern();
 
-    [GeneratedRegex(@"[._-]+")]
+    [GeneratedRegex(@"[._]+")]
     private static partial Regex Separators();
 
     [GeneratedRegex(@"\s+")]
@@ -50,9 +53,22 @@ internal static partial class MediaParser
         var filename = System.IO.Path.GetFileNameWithoutExtension(path);
         var episode = EpisodePattern().Match(filename);
         var year = YearPattern().Match(filename);
-        var end = new[] { episode.Success ? episode.Index : filename.Length, year.Success ? year.Index : filename.Length }.Min();
+        var technical = ReleaseTagPattern().Match(filename);
+
+        var end = new[]
+        {
+            episode.Success ? episode.Index : filename.Length,
+            year.Success ? year.Index : filename.Length,
+            technical.Success ? technical.Index : filename.Length
+        }.Min();
+
+        // Remove release-only bracket groups before any relevant year or tech tag.
         var title = filename[..end];
-        title = Whitespace().Replace(Separators().Replace(NoisePattern().Replace(title, " "), " "), " ").Trim(' ', '[', ']', '(', ')');
+        var bracket = Regex.Match(title, @"(?i)[\[(]\s*(?:fr(?:[ -]en)?|en|multi|vff|imax|hdr|dv|4k)\b");
+        if (bracket.Success) title = title[..bracket.Index];
+
+        title = Separators().Replace(title, " ");
+        title = Whitespace().Replace(title, " ").Trim(' ', '[', ']', '(', ')', '-', '.');
         if (string.IsNullOrWhiteSpace(title)) title = filename;
 
         var detail = episode.Success
