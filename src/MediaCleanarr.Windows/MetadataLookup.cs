@@ -90,6 +90,8 @@ internal static class MetadataLookup
         if (max < 0) return new(item.Title, expectedYear, source, "Not found");
         // Never silently claim that an ambiguous international title is verified.
         var status = max >= 0.82 ? "Matched" : "Review";
+        if (expectedYear.Length == 4 && chosenYear.Length == 4 && expectedYear != chosenYear)
+            status = "Review";
         return new(chosenTitle, chosenYear, source, status);
     }
 
