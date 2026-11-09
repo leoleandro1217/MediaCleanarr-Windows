@@ -38,15 +38,15 @@ jobs:
           name: MediaCleanarr-Windows-win-x64
           path: publish/MediaCleanarr-Windows.exe
           if-no-files-found: error
-      - name: Publish Alpha 4 release
+      - name: Publish Alpha 5 release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.2.0-alpha.4
+          tag_name: v0.2.0-alpha.5
           target_commitish: ${{ github.sha }}
-          name: MediaCleanarr Windows v0.2.0 Alpha 4 (.NET)
+          name: MediaCleanarr Windows v0.2.0 Alpha 5 (.NET)
           body: |
             Windows x64 portable, self-contained .NET 10 build.
-            Local media inventory, filtering and CSV export.
+            Local media inventory, optional OMDb / TheTVDB lookups, year in titles, filtering and CSV export.
             Read-only alpha: does not rename, move or delete files.
           prerelease: true
           make_latest: false
