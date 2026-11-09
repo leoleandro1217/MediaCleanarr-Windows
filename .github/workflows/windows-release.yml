@@ -38,15 +38,15 @@ jobs:
           name: MediaCleanarr-Windows-win-x64
           path: publish/MediaCleanarr-Windows.exe
           if-no-files-found: error
-      - name: Publish Alpha 9 release
+      - name: Publish Alpha 10 release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.2.0-alpha.9
+          tag_name: v0.2.0-alpha.10
           target_commitish: ${{ github.sha }}
-          name: MediaCleanarr Windows v0.2.0 Alpha 9 (.NET)
+          name: MediaCleanarr Windows v0.2.0 Alpha 10 (.NET)
           body: |
             Windows x64 portable, self-contained .NET 10 build.
-            Reworked high-DPI controls: metadata settings in three rows and a full-width anchored filter; TMDb, SQLite cache and CSV.
+            Safer OMDb/TMDb/TVDB matching: conflicting years require manual review; SQLite cache version reset.
             Read-only alpha: does not rename, move or delete files.
           prerelease: true
           make_latest: false
